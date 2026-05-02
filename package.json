@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "description": "RESTful API para captura de leads de Landing Page de Consultoria Fitness",
   "main": "dist/index.js",
-  "type": "module",
   "scripts": {
     "dev": "tsx src/index.ts",
     "build": "tsc",
