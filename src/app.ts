@@ -10,7 +10,7 @@ import { createLeadRoutes } from './presentation/routes';
 const app: Express = express();
 
 const corsOptions = {
-  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+  origin: process.env.CORS_ORIGIN || '*',
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
@@ -42,8 +42,8 @@ app.use('/api/leads', leadRoutes);
 
 app.use((_req: Request, res: Response) => {
   res.status(404).json({
-    success: false,
-    message: 'Rota não encontrada',
+    error: 'Not Found',
+    message: 'Endpoint não existe',
   });
 });
 
