@@ -1,0 +1,2 @@
+export { createLeadRoutes } from './lead';
+

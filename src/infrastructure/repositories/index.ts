@@ -1,0 +1,2 @@
+export { LeadRepository } from './LeadRepository';
+
