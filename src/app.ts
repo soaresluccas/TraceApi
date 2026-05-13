@@ -3,9 +3,10 @@ import cors from 'cors';
 import swaggerUi from 'swagger-ui-express';
 import swaggerSpec from './docs/swagger';
 import { initSupabase } from './infrastructure/config';
-import { LeadRepository } from './infrastructure/repositories';
-import { LeadController } from './presentation/controllers';
-import { createLeadRoutes } from './presentation/routes';
+import { LeadRepository, UserRepository } from './infrastructure/repositories';
+import { LeadController, AuthController } from './presentation/controllers';
+import { createLeadRoutes, createAuthRoutes } from './presentation/routes';
+import { authMiddleware } from './presentation/middleware/authMiddleware';
 
 const app: Express = express();
 
@@ -45,10 +46,14 @@ app.get('/', (_req: Request, res: Response) => {
 
 const supabase = initSupabase();
 const leadRepository = new LeadRepository(supabase);
+const userRepository = new UserRepository();
 const leadController = new LeadController(leadRepository);
+const authController = new AuthController(userRepository);
 const leadRoutes = createLeadRoutes(leadController);
+const authRoutes = createAuthRoutes(authController);
 
-app.use('/api/leads', leadRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/leads', authMiddleware, leadRoutes);
 
 app.use((_req: Request, res: Response) => {
   res.status(404).json({
