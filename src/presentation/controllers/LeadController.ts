@@ -144,5 +144,31 @@ export class LeadController {
       });
     }
   }
+
+  async getLeads(req: Request, res: Response): Promise<void> {
+    try {
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+      const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
+
+      const result = await this.listLeadsUseCase.execute({ limit, offset });
+
+      res.json({
+        success: true,
+        data: result.data.map((lead) => lead.toPrimitive()),
+        pagination: {
+          total: result.total,
+          limit: result.limit,
+          offset: result.offset,
+          pages: Math.ceil(result.total / result.limit),
+        },
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro ao listar leads';
+      res.status(500).json({
+        success: false,
+        message,
+      });
+    }
+  }
 }
 
