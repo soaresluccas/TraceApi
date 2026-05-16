@@ -4,11 +4,13 @@ import swaggerUi from 'swagger-ui-express';
 import swaggerSpec from './docs/swagger';
 import { initSupabase } from './infrastructure/config';
 import { LeadRepository, UserRepository } from './infrastructure/repositories';
+import { BrevoLeadNotificationService } from './infrastructure/services';
 import { LeadController, AuthController } from './presentation/controllers';
-import { createLeadRoutes, createAuthRoutes } from './presentation/routes';
+import { createLeadRoutes, createPublicLeadRoutes, createAuthRoutes } from './presentation/routes';
 import { authMiddleware } from './presentation/middleware/authMiddleware';
 
 const app: Express = express();
+app.set('trust proxy', 1);
 
 const allowedOrigins = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
@@ -28,7 +30,7 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.use(express.json());
+app.use(express.json({ limit: '16kb' }));
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
@@ -47,12 +49,15 @@ app.get('/', (_req: Request, res: Response) => {
 const supabase = initSupabase();
 const leadRepository = new LeadRepository(supabase);
 const userRepository = new UserRepository();
-const leadController = new LeadController(leadRepository);
+const leadNotificationService = new BrevoLeadNotificationService();
+const leadController = new LeadController(leadRepository, leadNotificationService);
 const authController = new AuthController(userRepository);
+const publicLeadRoutes = createPublicLeadRoutes(leadController);
 const leadRoutes = createLeadRoutes(leadController);
 const authRoutes = createAuthRoutes(authController);
 
 app.use('/api/auth', authRoutes);
+app.use('/api/leads', publicLeadRoutes);
 app.use('/api/leads', authMiddleware, leadRoutes);
 
 app.use((_req: Request, res: Response) => {

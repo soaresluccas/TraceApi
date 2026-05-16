@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import type { ILeadRepository } from '../../domain/interfaces/index';
+import type { ILeadNotificationService, ILeadRepository } from '../../domain/interfaces/index';
 import {
   CreateLeadUseCase,
   GetLeadByIdUseCase,
@@ -15,8 +15,8 @@ export class LeadController {
   private updateLeadUseCase: UpdateLeadUseCase;
   private deleteLeadUseCase: DeleteLeadUseCase;
 
-  constructor(leadRepository: ILeadRepository) {
-    this.createLeadUseCase = new CreateLeadUseCase(leadRepository);
+  constructor(leadRepository: ILeadRepository, leadNotificationService?: ILeadNotificationService) {
+    this.createLeadUseCase = new CreateLeadUseCase(leadRepository, leadNotificationService);
     this.getLeadByIdUseCase = new GetLeadByIdUseCase(leadRepository);
     this.listLeadsUseCase = new ListLeadsUseCase(leadRepository);
     this.updateLeadUseCase = new UpdateLeadUseCase(leadRepository);
