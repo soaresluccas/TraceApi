@@ -12,18 +12,37 @@ export class BrevoLeadNotificationService implements ILeadNotificationService {
   private readonly senderEmail = process.env.BREVO_SENDER_EMAIL;
   private readonly senderName = process.env.BREVO_SENDER_NAME || 'Trace Company';
   private readonly notificationEmail = process.env.LEAD_NOTIFICATION_EMAIL;
+  private readonly isConfigured: boolean;
+
+  constructor() {
+    this.isConfigured = !!(this.apiKey && this.senderEmail && this.notificationEmail);
+    
+    if (!this.isConfigured) {
+      console.error('[BrevoLeadNotificationService] CONFIGURAÇÃO INCOMPLETA:');
+      console.error(`  - BREVO_API_KEY: ${this.apiKey ? '✓ configurada' : '✗ faltando'}`);
+      console.error(`  - BREVO_SENDER_EMAIL: ${this.senderEmail ? '✓ configurada' : '✗ faltando'}`);
+      console.error(`  - LEAD_NOTIFICATION_EMAIL: ${this.notificationEmail ? '✓ configurada' : '✗ faltando'}`);
+      console.error('  Emails de notificação de leads NÃO serão enviados!');
+    } else {
+      console.log('[BrevoLeadNotificationService] Serviço configurado com sucesso');
+      console.log(`  - Remetente: ${this.senderName} <${this.senderEmail}>`);
+      console.log(`  - Destinatário: ${this.notificationEmail}`);
+    }
+  }
 
   async notifyNewLead(lead: ILead): Promise<void> {
-    if (!this.apiKey || !this.senderEmail || !this.notificationEmail) {
-      console.warn('[BrevoLeadNotificationService] Brevo env vars are not configured. Skipping email.');
+    if (!this.isConfigured) {
+      console.warn(`[BrevoLeadNotificationService] Email NÃO enviado para lead "${lead.name}" - configuração incompleta`);
       return;
     }
+
+    console.log(`[BrevoLeadNotificationService] Iniciando envio de email para lead: "${lead.name}" (${lead.whatsapp})`);
 
     const response = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
       headers: {
         accept: 'application/json',
-        'api-key': this.apiKey,
+        'api-key': this.apiKey!,
         'content-type': 'application/json',
       },
       body: JSON.stringify({
@@ -39,8 +58,22 @@ export class BrevoLeadNotificationService implements ILeadNotificationService {
     });
 
     if (!response.ok) {
-      const error = (await response.json().catch(() => null)) as BrevoEmailResponse | null;
-      throw new Error(error?.message || `Brevo request failed with status ${response.status}`);
+      const errorData = (await response.json().catch(() => null)) as BrevoEmailResponse | null;
+      const errorMessage = errorData?.message || `Brevo API retornou status ${response.status}`;
+      console.error(`[BrevoLeadNotificationService] ERRO ao enviar email:`);
+      console.error(`  - Lead: "${lead.name}"`);
+      console.error(`  - Status HTTP: ${response.status}`);
+      console.error(`  - Mensagem: ${errorMessage}`);
+      if (errorData?.code) {
+        console.error(`  - Código Brevo: ${errorData.code}`);
+      }
+      throw new Error(errorMessage);
+    }
+
+    const responseData = (await response.json().catch(() => null)) as BrevoEmailResponse | null;
+    console.log(`[BrevoLeadNotificationService] ✓ Email enviado com sucesso para lead "${lead.name}"`);
+    if (responseData?.messageId) {
+      console.log(`  - Message ID: ${responseData.messageId}`);
     }
   }
 
