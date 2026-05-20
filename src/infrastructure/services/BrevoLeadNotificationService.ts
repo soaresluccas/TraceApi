@@ -13,6 +13,8 @@ export class BrevoLeadNotificationService implements ILeadNotificationService {
   private readonly senderName = process.env.BREVO_SENDER_NAME || 'Trace Company';
   private readonly notificationEmail = process.env.LEAD_NOTIFICATION_EMAIL;
   private readonly isConfigured: boolean;
+  private readonly maxRetries = 3;
+  private readonly timeoutMs = 10000;
 
   constructor() {
     this.isConfigured = !!(this.apiKey && this.senderEmail && this.notificationEmail);
@@ -38,43 +40,103 @@ export class BrevoLeadNotificationService implements ILeadNotificationService {
 
     console.log(`[BrevoLeadNotificationService] Iniciando envio de email para lead: "${lead.name}" (${lead.whatsapp})`);
 
-    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
-      method: 'POST',
-      headers: {
-        accept: 'application/json',
-        'api-key': this.apiKey!,
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        sender: {
-          name: this.senderName,
-          email: this.senderEmail,
-        },
-        to: [{ email: this.notificationEmail }],
-        subject: `Novo lead recebido: ${lead.name}`,
-        htmlContent: this.buildHtmlContent(lead),
-        textContent: this.buildTextContent(lead),
-      }),
-    });
+    let lastError: Error | null = null;
+    
+    for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
+      try {
+        if (attempt > 1) {
+          const backoffMs = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+          console.log(`[BrevoLeadNotificationService] Tentativa ${attempt}/${this.maxRetries} após ${backoffMs}ms...`);
+          await this.sleep(backoffMs);
+        }
 
-    if (!response.ok) {
-      const errorData = (await response.json().catch(() => null)) as BrevoEmailResponse | null;
-      const errorMessage = errorData?.message || `Brevo API retornou status ${response.status}`;
-      console.error(`[BrevoLeadNotificationService] ERRO ao enviar email:`);
-      console.error(`  - Lead: "${lead.name}"`);
-      console.error(`  - Status HTTP: ${response.status}`);
-      console.error(`  - Mensagem: ${errorMessage}`);
-      if (errorData?.code) {
-        console.error(`  - Código Brevo: ${errorData.code}`);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), this.timeoutMs);
+
+        try {
+          const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+            method: 'POST',
+            headers: {
+              accept: 'application/json',
+              'api-key': this.apiKey!,
+              'content-type': 'application/json',
+            },
+            body: JSON.stringify({
+              sender: {
+                name: this.senderName,
+                email: this.senderEmail,
+              },
+              to: [{ email: this.notificationEmail }],
+              subject: `Novo lead recebido: ${lead.name}`,
+              htmlContent: this.buildHtmlContent(lead),
+              textContent: this.buildTextContent(lead),
+            }),
+            signal: controller.signal,
+          });
+
+          clearTimeout(timeoutId);
+
+          if (!response.ok) {
+            const errorData = (await response.json().catch(() => null)) as BrevoEmailResponse | null;
+            const errorMessage = errorData?.message || `Brevo API retornou status ${response.status}`;
+            
+            if (response.status >= 500 && attempt < this.maxRetries) {
+              console.warn(`[BrevoLeadNotificationService] Erro ${response.status} (tentativa ${attempt}/${this.maxRetries})`);
+              lastError = new Error(errorMessage);
+              continue;
+            }
+            
+            console.error(`[BrevoLeadNotificationService] ERRO ao enviar email:`);
+            console.error(`  - Lead: "${lead.name}"`);
+            console.error(`  - Status HTTP: ${response.status}`);
+            console.error(`  - Mensagem: ${errorMessage}`);
+            if (errorData?.code) {
+              console.error(`  - Código Brevo: ${errorData.code}`);
+            }
+            throw new Error(errorMessage);
+          }
+
+          const responseData = (await response.json().catch(() => null)) as BrevoEmailResponse | null;
+          console.log(`[BrevoLeadNotificationService] ✓ Email enviado com sucesso para lead "${lead.name}"`);
+          if (responseData?.messageId) {
+            console.log(`  - Message ID: ${responseData.messageId}`);
+          }
+          if (attempt > 1) {
+            console.log(`  - Sucesso na tentativa ${attempt}/${this.maxRetries}`);
+          }
+          return;
+        } finally {
+          clearTimeout(timeoutId);
+        }
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+        
+        const isNetworkError = lastError.name === 'AbortError' || 
+                               lastError.message.includes('fetch failed') ||
+                               lastError.message.includes('ECONNRESET') ||
+                               lastError.message.includes('UND_ERR_SOCKET');
+        
+        if (isNetworkError && attempt < this.maxRetries) {
+          console.warn(`[BrevoLeadNotificationService] Erro de rede (tentativa ${attempt}/${this.maxRetries}): ${lastError.message}`);
+          continue;
+        }
+        
+        console.error(`[BrevoLeadNotificationService] ERRO ao enviar email:`);
+        console.error(`  - Lead: "${lead.name}"`);
+        console.error(`  - Erro: ${lastError.message}`);
+        console.error(`  - Tipo: ${lastError.name}`);
+        throw lastError;
       }
-      throw new Error(errorMessage);
     }
+    
+    if (lastError) {
+      console.error(`[BrevoLeadNotificationService] Falha após ${this.maxRetries} tentativas`);
+      throw lastError;
+    }
+  }
 
-    const responseData = (await response.json().catch(() => null)) as BrevoEmailResponse | null;
-    console.log(`[BrevoLeadNotificationService] ✓ Email enviado com sucesso para lead "${lead.name}"`);
-    if (responseData?.messageId) {
-      console.log(`  - Message ID: ${responseData.messageId}`);
-    }
+  private sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   private buildHtmlContent(lead: ILead): string {
