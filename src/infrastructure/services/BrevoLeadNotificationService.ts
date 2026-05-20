@@ -14,7 +14,7 @@ export class BrevoLeadNotificationService implements ILeadNotificationService {
   private readonly notificationEmail = process.env.LEAD_NOTIFICATION_EMAIL;
   private readonly isConfigured: boolean;
   private readonly maxRetries = 3;
-  private readonly timeoutMs = 10000;
+  private readonly timeoutMs = 30000;
 
   constructor() {
     this.isConfigured = !!(this.apiKey && this.senderEmail && this.notificationEmail);
@@ -41,6 +41,7 @@ export class BrevoLeadNotificationService implements ILeadNotificationService {
     console.log(`[BrevoLeadNotificationService] Iniciando envio de email para lead: "${lead.name}" (${lead.whatsapp})`);
 
     let lastError: Error | null = null;
+    const startTime = Date.now();
     
     for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
       try {
@@ -51,9 +52,13 @@ export class BrevoLeadNotificationService implements ILeadNotificationService {
         }
 
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), this.timeoutMs);
+        const timeoutId = setTimeout(() => {
+          console.warn(`[BrevoLeadNotificationService] Timeout de ${this.timeoutMs}ms atingido (tentativa ${attempt})`);
+          controller.abort();
+        }, this.timeoutMs);
 
         try {
+          const attemptStart = Date.now();
           const response = await fetch('https://api.brevo.com/v3/smtp/email', {
             method: 'POST',
             headers: {
@@ -97,12 +102,16 @@ export class BrevoLeadNotificationService implements ILeadNotificationService {
           }
 
           const responseData = (await response.json().catch(() => null)) as BrevoEmailResponse | null;
+          const elapsed = Date.now() - attemptStart;
+          const totalElapsed = Date.now() - startTime;
           console.log(`[BrevoLeadNotificationService] ✓ Email enviado com sucesso para lead "${lead.name}"`);
           if (responseData?.messageId) {
             console.log(`  - Message ID: ${responseData.messageId}`);
           }
+          console.log(`  - Tempo de resposta: ${elapsed}ms`);
           if (attempt > 1) {
             console.log(`  - Sucesso na tentativa ${attempt}/${this.maxRetries}`);
+            console.log(`  - Tempo total (com retries): ${totalElapsed}ms`);
           }
           return;
         } finally {
