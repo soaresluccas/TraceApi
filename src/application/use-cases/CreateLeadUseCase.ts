@@ -44,9 +44,11 @@ export class CreateLeadUseCase {
     const createdLead = await this.leadRepository.create(lead);
 
     if (this.leadNotificationService) {
-      void this.leadNotificationService.notifyNewLead(createdLead.toPrimitive()).catch((error) => {
+      try {
+        await this.leadNotificationService.notifyNewLead(createdLead.toPrimitive());
+      } catch (error) {
         console.error('[CreateLeadUseCase] Failed to send lead notification:', error);
-      });
+      }
     }
 
     return createdLead;
