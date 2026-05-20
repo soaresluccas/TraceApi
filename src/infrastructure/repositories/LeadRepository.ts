@@ -33,7 +33,7 @@ export class LeadRepository implements ILeadRepository {
   }
 
   async findAll(limit: number = 10, offset: number = 0): Promise<{ data: Lead[]; total: number }> {
-    const { data: countData, error: countError } = await this.supabase
+    const { count, error: countError } = await this.supabase
       .from('leads')
       .select('*', { count: 'exact', head: true });
 
@@ -47,7 +47,7 @@ export class LeadRepository implements ILeadRepository {
 
     if (error) throw new Error(`Failed to list leads: ${error.message}`);
 
-    const total = countData ? countData.length : 0;
+    const total = count ?? 0;
     const leads = (data || []).map((item) => LeadEntity.fromDatabase(item as ILead));
 
     return { data: leads, total };
