@@ -17,7 +17,13 @@ export function createPublicLeadRoutes(controller: LeadController): Router {
 export function createLeadRoutes(controller: LeadController): Router {
   const router = Router();
 
-  router.get('/', (req, res) => controller.list(req, res));
+  router.get('/', (req, res) => {
+    if (req.query.not_in_crm === 'true') {
+      return controller.listNotInCrm(req, res);
+    }
+    return controller.list(req, res);
+  });
+  router.get('/control', (req, res) => controller.listControl(req, res));
   router.get('/get-leads', (req, res) => controller.getLeads(req, res));
   router.get('/:id', (req, res) => controller.getById(req, res));
   router.put('/:id', (req, res) => controller.update(req, res));

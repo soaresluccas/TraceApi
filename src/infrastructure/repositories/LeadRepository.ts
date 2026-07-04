@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Lead, ILead } from '../../domain/entities/index';
-import type { ILeadRepository } from '../../domain/interfaces/index';
+import type { ILeadRepository, LeadControlDTO, LeadNotInCrmDTO } from '../../domain/interfaces/index';
 import { Lead as LeadEntity } from '../../domain/entities/index';
 
 export class LeadRepository implements ILeadRepository {
@@ -51,6 +51,41 @@ export class LeadRepository implements ILeadRepository {
     const leads = (data || []).map((item) => LeadEntity.fromDatabase(item as ILead));
 
     return { data: leads, total };
+  }
+
+  async findAllControl(limit: number = 10, offset: number = 0): Promise<{ data: LeadControlDTO[]; total: number }> {
+    const { count, error: countError } = await this.supabase
+      .from('leads')
+      .select('*', { count: 'exact', head: true });
+
+    if (countError) throw new Error(`Failed to count leads: ${countError.message}`);
+
+    const { data, error } = await this.supabase
+      .from('leads')
+      .select('id, name, instagram, curva_abc, respondeu, reuniao_agendada, reuniao_concluida, proposta_enviada, conversao, objecao')
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (error) throw new Error(`Failed to list leads control: ${error.message}`);
+
+    const total = count ?? 0;
+    const leads = (data || []) as LeadControlDTO[];
+
+    return { data: leads, total };
+  }
+
+  async findAllNotInCrm(search?: string, limit: number = 10, offset: number = 0): Promise<{ data: LeadNotInCrmDTO[]; total: number }> {
+    const { data, error } = await this.supabase.rpc('get_leads_not_in_crm', {
+      p_search: search ?? null,
+      p_limit: limit,
+      p_offset: offset,
+    });
+
+    if (error) throw new Error(`Failed to list leads not in CRM: ${error.message}`);
+    if (!data) return { data: [], total: 0 };
+
+    const result = data as { data: LeadNotInCrmDTO[]; total: number };
+    return { data: result.data, total: result.total };
   }
 
   async update(id: string, leadData: Partial<ILead>): Promise<Lead | null> {

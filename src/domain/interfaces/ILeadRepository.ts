@@ -4,7 +4,29 @@ export interface ILeadRepository {
   create(lead: Lead): Promise<Lead>;
   findById(id: string): Promise<Lead | null>;
   findAll(limit?: number, offset?: number): Promise<{ data: Lead[]; total: number }>;
+  findAllControl(limit?: number, offset?: number): Promise<{ data: LeadControlDTO[]; total: number }>;
+  findAllNotInCrm(search?: string, limit?: number, offset?: number): Promise<{ data: LeadNotInCrmDTO[]; total: number }>;
   update(id: string, lead: Partial<ILead>): Promise<Lead | null>;
   delete(id: string): Promise<boolean>;
+}
+
+export interface LeadControlDTO {
+  id: string;
+  name: string;
+  instagram: string | null;
+  curva_abc: string | null;
+  respondeu: number | null;
+  reuniao_agendada: number | null;
+  reuniao_concluida: number | null;
+  proposta_enviada: number | null;
+  conversao: number | null;
+  objecao: number | null;
+}
+
+export interface LeadNotInCrmDTO {
+  id: string;
+  name: string;
+  whatsapp: string;
+  instagram: string | null;
 }
 

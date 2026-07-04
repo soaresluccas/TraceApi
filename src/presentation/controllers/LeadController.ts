@@ -4,6 +4,8 @@ import {
   CreateLeadUseCase,
   GetLeadByIdUseCase,
   ListLeadsUseCase,
+  ListLeadsControlUseCase,
+  ListLeadsNotInCrmUseCase,
   UpdateLeadUseCase,
   DeleteLeadUseCase,
 } from '../../application/index';
@@ -12,6 +14,8 @@ export class LeadController {
   private createLeadUseCase: CreateLeadUseCase;
   private getLeadByIdUseCase: GetLeadByIdUseCase;
   private listLeadsUseCase: ListLeadsUseCase;
+  private listLeadsControlUseCase: ListLeadsControlUseCase;
+  private listLeadsNotInCrmUseCase: ListLeadsNotInCrmUseCase;
   private updateLeadUseCase: UpdateLeadUseCase;
   private deleteLeadUseCase: DeleteLeadUseCase;
 
@@ -19,6 +23,8 @@ export class LeadController {
     this.createLeadUseCase = new CreateLeadUseCase(leadRepository, leadNotificationService);
     this.getLeadByIdUseCase = new GetLeadByIdUseCase(leadRepository);
     this.listLeadsUseCase = new ListLeadsUseCase(leadRepository);
+    this.listLeadsControlUseCase = new ListLeadsControlUseCase(leadRepository);
+    this.listLeadsNotInCrmUseCase = new ListLeadsNotInCrmUseCase(leadRepository);
     this.updateLeadUseCase = new UpdateLeadUseCase(leadRepository);
     this.deleteLeadUseCase = new DeleteLeadUseCase(leadRepository);
   }
@@ -145,6 +151,32 @@ export class LeadController {
     }
   }
 
+  async listControl(req: Request, res: Response): Promise<void> {
+    try {
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+      const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
+
+      const result = await this.listLeadsControlUseCase.execute({ limit, offset });
+
+      res.json({
+        success: true,
+        data: result.data,
+        pagination: {
+          total: result.total,
+          limit: result.limit,
+          offset: result.offset,
+          pages: Math.ceil(result.total / result.limit),
+        },
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro ao listar leads de controle';
+      res.status(500).json({
+        success: false,
+        message,
+      });
+    }
+  }
+
   async getLeads(req: Request, res: Response): Promise<void> {
     try {
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
@@ -164,6 +196,33 @@ export class LeadController {
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Erro ao listar leads';
+      res.status(500).json({
+        success: false,
+        message,
+      });
+    }
+  }
+
+  async listNotInCrm(req: Request, res: Response): Promise<void> {
+    try {
+      const search = req.query.search as string | undefined;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+      const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
+
+      const result = await this.listLeadsNotInCrmUseCase.execute({ search, limit, offset });
+
+      res.json({
+        success: true,
+        data: result.data,
+        pagination: {
+          total: result.total,
+          limit: result.limit,
+          offset: result.offset,
+          pages: Math.ceil(result.total / result.limit),
+        },
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro ao listar leads fora do CRM';
       res.status(500).json({
         success: false,
         message,
