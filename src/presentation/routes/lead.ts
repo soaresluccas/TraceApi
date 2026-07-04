@@ -24,6 +24,7 @@ export function createLeadRoutes(controller: LeadController): Router {
     return controller.list(req, res);
   });
   router.get('/control', (req, res) => controller.listControl(req, res));
+  router.patch('/control/:id', (req, res) => controller.updateControl(req, res));
   router.get('/get-leads', (req, res) => controller.getLeads(req, res));
   router.get('/:id', (req, res) => controller.getById(req, res));
   router.put('/:id', (req, res) => controller.update(req, res));

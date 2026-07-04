@@ -105,6 +105,23 @@ export class LeadRepository implements ILeadRepository {
     return LeadEntity.fromDatabase(data as ILead);
   }
 
+  async updateControl(id: string, data: Partial<Omit<LeadControlDTO, 'id' | 'name' | 'instagram'>>): Promise<LeadControlDTO | null> {
+    const { data: updated, error } = await this.supabase
+      .from('leads')
+      .update(data)
+      .eq('id', id)
+      .select('id, name, instagram, curva_abc, respondeu, reuniao_agendada, reuniao_concluida, proposta_enviada, conversao, objecao')
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') return null;
+      throw new Error(`Failed to update lead control: ${error.message}`);
+    }
+    if (!updated) return null;
+
+    return updated as LeadControlDTO;
+  }
+
   async delete(id: string): Promise<boolean> {
     const lead = await this.findById(id);
     if (!lead) return false;

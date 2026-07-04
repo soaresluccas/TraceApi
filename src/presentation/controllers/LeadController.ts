@@ -7,6 +7,7 @@ import {
   ListLeadsControlUseCase,
   ListLeadsNotInCrmUseCase,
   UpdateLeadUseCase,
+  UpdateLeadControlUseCase,
   DeleteLeadUseCase,
 } from '../../application/index';
 
@@ -17,6 +18,7 @@ export class LeadController {
   private listLeadsControlUseCase: ListLeadsControlUseCase;
   private listLeadsNotInCrmUseCase: ListLeadsNotInCrmUseCase;
   private updateLeadUseCase: UpdateLeadUseCase;
+  private updateLeadControlUseCase: UpdateLeadControlUseCase;
   private deleteLeadUseCase: DeleteLeadUseCase;
 
   constructor(leadRepository: ILeadRepository, leadNotificationService?: ILeadNotificationService) {
@@ -26,6 +28,7 @@ export class LeadController {
     this.listLeadsControlUseCase = new ListLeadsControlUseCase(leadRepository);
     this.listLeadsNotInCrmUseCase = new ListLeadsNotInCrmUseCase(leadRepository);
     this.updateLeadUseCase = new UpdateLeadUseCase(leadRepository);
+    this.updateLeadControlUseCase = new UpdateLeadControlUseCase(leadRepository);
     this.deleteLeadUseCase = new DeleteLeadUseCase(leadRepository);
   }
 
@@ -224,6 +227,33 @@ export class LeadController {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Erro ao listar leads fora do CRM';
       res.status(500).json({
+        success: false,
+        message,
+      });
+    }
+  }
+
+  async updateControl(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const lead = await this.updateLeadControlUseCase.execute(id, req.body);
+
+      if (!lead) {
+        res.status(404).json({
+          success: false,
+          message: 'Lead não encontrado',
+        });
+        return;
+      }
+
+      res.json({
+        success: true,
+        message: 'Lead atualizado com sucesso',
+        data: lead,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro ao atualizar lead';
+      res.status(400).json({
         success: false,
         message,
       });
