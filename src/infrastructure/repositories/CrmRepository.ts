@@ -27,7 +27,7 @@ export class CrmRepository implements ICrmRepository {
   }
 
   async getBoard(): Promise<BoardStage[]> {
-    const { data, error } = await this.supabase.rpc('get_board');
+    const { data, error } = await this.supabase.rpc('get_board', {});
 
     if (error) throw new Error(`Failed to get board: ${error.message}`);
     if (!data) return [];
