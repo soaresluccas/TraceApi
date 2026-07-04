@@ -202,17 +202,10 @@ create index if not exists crm_stage_history_card_idx on public.crm_stage_histor
 
 -- 3.4) Trigger: registra automaticamente no histórico toda vez que o card
 -- é criado ou muda de fase, e marca closed_at quando entra em fase terminal
-create or replace function public.log_crm_stage_change()
+create or replace function public.log_crm_stage_change_before()
 returns trigger as $$
 begin
-  if (tg_op = 'INSERT') then
-    insert into public.crm_stage_history (card_id, from_stage_id, to_stage_id)
-    values (new.id, null, new.stage_id);
-
-  elsif (tg_op = 'UPDATE' and old.stage_id is distinct from new.stage_id) then
-    insert into public.crm_stage_history (card_id, from_stage_id, to_stage_id)
-    values (new.id, old.stage_id, new.stage_id);
-
+  if (tg_op = 'UPDATE' and old.stage_id is distinct from new.stage_id) then
     new.entered_stage_at = current_timestamp;
 
     if exists (
@@ -230,10 +223,31 @@ begin
 end;
 $$ language plpgsql;
 
+create or replace function public.log_crm_stage_change_after()
+returns trigger as $$
+begin
+  if (tg_op = 'INSERT') then
+    insert into public.crm_stage_history (card_id, from_stage_id, to_stage_id)
+    values (new.id, null, new.stage_id);
+
+  elsif (tg_op = 'UPDATE' and old.stage_id is distinct from new.stage_id) then
+    insert into public.crm_stage_history (card_id, from_stage_id, to_stage_id)
+    values (new.id, old.stage_id, new.stage_id);
+  end if;
+
+  return new;
+end;
+$$ language plpgsql;
+
 drop trigger if exists trg_crm_cards_stage_change on public.crm_cards;
-create trigger trg_crm_cards_stage_change
+drop trigger if exists trg_crm_cards_before on public.crm_cards;
+drop trigger if exists trg_crm_cards_after on public.crm_cards;
+create trigger trg_crm_cards_before
 before insert or update on public.crm_cards
-for each row execute function public.log_crm_stage_change();
+for each row execute function public.log_crm_stage_change_before();
+create trigger trg_crm_cards_after
+after insert or update on public.crm_cards
+for each row execute function public.log_crm_stage_change_after();
 
 -- 3.5) Views prontas pra dashboard do funil
 

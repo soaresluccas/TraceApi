@@ -222,18 +222,22 @@ begin
           'whatsapp', l.whatsapp,
           'instagram', l.instagram
         )
+        order by l.created_at desc
       )
-      from public.leads l
-      where l.id not in (select lead_id from public.crm_cards)
-        and (
-          p_search is null
-          or l.name ilike '%' || p_search || '%'
-          or l.instagram ilike '%' || p_search || '%'
-          or l.whatsapp ilike '%' || p_search || '%'
-        )
-      order by l.created_at desc
-      limit p_limit
-      offset p_offset
+      from (
+        select l.id, l.name, l.whatsapp, l.instagram, l.created_at
+        from public.leads l
+        where l.id not in (select lead_id from public.crm_cards)
+          and (
+            p_search is null
+            or l.name ilike '%' || p_search || '%'
+            or l.instagram ilike '%' || p_search || '%'
+            or l.whatsapp ilike '%' || p_search || '%'
+          )
+        order by l.created_at desc
+        limit p_limit
+        offset p_offset
+      ) l
       ),
       '[]'::json
     ),
@@ -255,6 +259,145 @@ end;
 $$;
 
 -- -------------------------------------------------------------------------
+-- 1.6 update_card(card_id, priority, assigned_to)
+-- -------------------------------------------------------------------------
+create or replace function public.update_card(
+  p_card_id uuid,
+  p_priority text default null,
+  p_assigned_to text default null
+)
+returns public.crm_cards
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_card public.crm_cards;
+begin
+  update public.crm_cards
+  set priority = coalesce(p_priority, priority),
+      assigned_to = coalesce(p_assigned_to, assigned_to)
+  where id = p_card_id
+  returning * into v_card;
+
+  if v_card is null then
+    raise exception 'Card not found'
+      using errcode = 'PGRST116';
+  end if;
+
+  return v_card;
+end;
+$$;
+
+-- -------------------------------------------------------------------------
+-- 1.7 delete_card(card_id)
+-- -------------------------------------------------------------------------
+create or replace function public.delete_card(
+  p_card_id uuid
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_deleted integer;
+begin
+  delete from public.crm_cards where id = p_card_id returning 1 into v_deleted;
+
+  if v_deleted is null then
+    raise exception 'Card not found'
+      using errcode = 'PGRST116';
+  end if;
+
+  return true;
+end;
+$$;
+
+-- -------------------------------------------------------------------------
+-- 1.8 get_card(card_id)
+-- -------------------------------------------------------------------------
+create or replace function public.get_card(
+  p_card_id uuid
+)
+returns json
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_result json;
+begin
+  select json_build_object(
+    'id', c.id,
+    'lead_id', c.lead_id,
+    'stage_id', c.stage_id,
+    'priority', c.priority,
+    'position', c.position,
+    'assigned_to', c.assigned_to,
+    'entered_stage_at', c.entered_stage_at,
+    'closed_at', c.closed_at,
+    'created_at', c.created_at,
+    'updated_at', c.updated_at,
+    'lead', json_build_object(
+      'id', l.id,
+      'name', l.name,
+      'whatsapp', l.whatsapp,
+      'instagram', l.instagram,
+      'curva_abc', l.curva_abc
+    )
+  )
+  into v_result
+  from public.crm_cards c
+  join public.leads l on l.id = c.lead_id
+  where c.id = p_card_id;
+
+  if v_result is null then
+    raise exception 'Card not found'
+      using errcode = 'PGRST116';
+  end if;
+
+  return v_result;
+end;
+$$;
+
+-- -------------------------------------------------------------------------
+-- 1.9 get_card_history(card_id)
+-- -------------------------------------------------------------------------
+create or replace function public.get_card_history(
+  p_card_id uuid
+)
+returns json
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_result json;
+begin
+  select json_agg(
+    json_build_object(
+      'id', h.id,
+      'card_id', h.card_id,
+      'from_stage_id', h.from_stage_id,
+      'to_stage_id', h.to_stage_id,
+      'changed_at', h.changed_at,
+      'from_stage_name', fs.name,
+      'to_stage_name', ts.name
+    )
+    order by h.changed_at desc
+  )
+  into v_result
+  from public.crm_stage_history h
+  left join public.crm_stages fs on fs.id = h.from_stage_id
+  join public.crm_stages ts on ts.id = h.to_stage_id
+  where h.card_id = p_card_id;
+
+  return coalesce(v_result, '[]'::json);
+end;
+$$;
+
+-- -------------------------------------------------------------------------
 -- GRANT EXECUTE nas stored functions
 -- -------------------------------------------------------------------------
-grant execute on function public.create_card, public.move_card, public.reorder_cards, public.get_board, public.get_leads_not_in_crm to anon, authenticated;
+grant execute on function public.create_card, public.move_card, public.reorder_cards, public.get_board, public.get_leads_not_in_crm, public.update_card, public.delete_card, public.get_card, public.get_card_history to anon, authenticated;

@@ -75,16 +75,11 @@ export class CrmRepository implements ICrmRepository {
   }
 
   async updateCard(cardId: string, input: UpdateCardInput): Promise<CrmCard | null> {
-    const updateData: Record<string, string | null> = {};
-    if (input.priority !== undefined) updateData.priority = input.priority;
-    if (input.assigned_to !== undefined) updateData.assigned_to = input.assigned_to;
-
-    const { data, error } = await this.supabase
-      .from('crm_cards')
-      .update(updateData)
-      .eq('id', cardId)
-      .select()
-      .single();
+    const { data, error } = await this.supabase.rpc('update_card', {
+      p_card_id: cardId,
+      p_priority: input.priority ?? null,
+      p_assigned_to: input.assigned_to ?? null,
+    });
 
     if (error) {
       if (error.code === 'PGRST116') return null;
@@ -96,20 +91,9 @@ export class CrmRepository implements ICrmRepository {
   }
 
   async getCardById(cardId: string): Promise<CardDetail | null> {
-    const { data, error } = await this.supabase
-      .from('crm_cards')
-      .select(`
-        *,
-        lead:leads (
-          id,
-          name,
-          whatsapp,
-          instagram,
-          curva_abc
-        )
-      `)
-      .eq('id', cardId)
-      .single();
+    const { data, error } = await this.supabase.rpc('get_card', {
+      p_card_id: cardId,
+    });
 
     if (error) {
       if (error.code === 'PGRST116') return null;
@@ -134,19 +118,9 @@ export class CrmRepository implements ICrmRepository {
   }
 
   async getCardHistory(cardId: string): Promise<StageHistoryEntry[]> {
-    const { data, error } = await this.supabase
-      .from('crm_stage_history')
-      .select(`
-        id,
-        card_id,
-        from_stage_id,
-        to_stage_id,
-        changed_at,
-        from_stage:crm_stages!from_stage_id (name),
-        to_stage:crm_stages!to_stage_id (name)
-      `)
-      .eq('card_id', cardId)
-      .order('changed_at', { ascending: false });
+    const { data, error } = await this.supabase.rpc('get_card_history', {
+      p_card_id: cardId,
+    });
 
     if (error) throw error;
     if (!data) return [];
@@ -157,18 +131,20 @@ export class CrmRepository implements ICrmRepository {
       from_stage_id: item.from_stage_id,
       to_stage_id: item.to_stage_id,
       changed_at: new Date(item.changed_at),
-      from_stage_name: item.from_stage?.name ?? null,
-      to_stage_name: item.to_stage?.name ?? '',
+      from_stage_name: item.from_stage_name ?? null,
+      to_stage_name: item.to_stage_name ?? '',
     }));
   }
 
   async deleteCard(cardId: string): Promise<boolean> {
-    const { error } = await this.supabase
-      .from('crm_cards')
-      .delete()
-      .eq('id', cardId);
+    const { error } = await this.supabase.rpc('delete_card', {
+      p_card_id: cardId,
+    });
 
-    if (error) throw error;
+    if (error) {
+      if (error.code === 'PGRST116') return false;
+      throw error;
+    }
     return true;
   }
 
