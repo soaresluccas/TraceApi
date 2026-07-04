@@ -15,7 +15,7 @@ export interface LeadControlDTO {
   id: string;
   name: string;
   instagram: string | null;
-  curva_abc: string | null;
+  curva_abc: number | null;
   respondeu: number | null;
   reuniao_agendada: number | null;
   reuniao_concluida: number | null;

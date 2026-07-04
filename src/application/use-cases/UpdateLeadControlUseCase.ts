@@ -3,7 +3,7 @@ import type { LeadControlDTO } from '../../domain/interfaces/index';
 import type { ILeadRepository } from '../../domain/interfaces/index';
 
 const UpdateLeadControlInputSchema = z.object({
-  curva_abc: z.union([z.string(), z.null()]).optional(),
+  curva_abc: z.union([z.number(), z.null()]).optional(),
   respondeu: z.union([z.number(), z.null()]).optional(),
   reuniao_agendada: z.union([z.number(), z.null()]).optional(),
   reuniao_concluida: z.union([z.number(), z.null()]).optional(),
