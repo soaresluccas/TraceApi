@@ -17,6 +17,7 @@ export interface BoardCard {
   priority: string | null;
   position: number;
   assigned_to: string | null;
+  observacao: string | null;
   entered_stage_at: string;
   closed_at: string | null;
   created_at: string;
@@ -67,6 +68,7 @@ export interface CreateCardInput {
 export interface UpdateCardInput {
   priority?: string;
   assigned_to?: string;
+  observacao?: string | null;
 }
 
 export interface ICrmRepository {

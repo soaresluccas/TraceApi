@@ -79,6 +79,7 @@ export class CrmRepository implements ICrmRepository {
       p_card_id: cardId,
       p_priority: input.priority ?? null,
       p_assigned_to: input.assigned_to ?? null,
+      p_observacao: input.observacao ?? null,
     });
 
     if (error) {
@@ -109,6 +110,7 @@ export class CrmRepository implements ICrmRepository {
       priority: card.priority,
       position: card.position,
       assigned_to: card.assigned_to,
+      observacao: card.observacao,
       entered_stage_at: new Date(card.entered_stage_at),
       closed_at: card.closed_at ? new Date(card.closed_at) : null,
       created_at: new Date(card.created_at),

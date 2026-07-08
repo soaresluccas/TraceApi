@@ -18,6 +18,7 @@ export class UpdateCardUseCase {
     return this.crmRepository.updateCard(input.card_id, {
       priority: input.priority,
       assigned_to: input.assigned_to,
+      observacao: input.observacao,
     });
   }
 }

@@ -167,6 +167,7 @@ begin
             'priority', c.priority,
             'position', c.position,
             'assigned_to', c.assigned_to,
+            'observacao', c.observacao,
             'entered_stage_at', c.entered_stage_at,
             'closed_at', c.closed_at,
             'created_at', c.created_at,
@@ -264,7 +265,8 @@ $$;
 create or replace function public.update_card(
   p_card_id uuid,
   p_priority text default null,
-  p_assigned_to text default null
+  p_assigned_to text default null,
+  p_observacao text default null
 )
 returns public.crm_cards
 language plpgsql
@@ -276,7 +278,8 @@ declare
 begin
   update public.crm_cards
   set priority = coalesce(p_priority, priority),
-      assigned_to = coalesce(p_assigned_to, assigned_to)
+      assigned_to = coalesce(p_assigned_to, assigned_to),
+      observacao = coalesce(p_observacao, observacao)
   where id = p_card_id
   returning * into v_card;
 
@@ -335,6 +338,7 @@ begin
     'priority', c.priority,
     'position', c.position,
     'assigned_to', c.assigned_to,
+    'observacao', c.observacao,
     'entered_stage_at', c.entered_stage_at,
     'closed_at', c.closed_at,
     'created_at', c.created_at,

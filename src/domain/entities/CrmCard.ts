@@ -5,6 +5,7 @@ export interface ICrmCard {
   priority: string | null;
   position: number;
   assigned_to: string | null;
+  observacao: string | null;
   entered_stage_at: Date;
   closed_at: Date | null;
   created_at: Date;
@@ -18,6 +19,7 @@ export class CrmCard implements ICrmCard {
   priority: string | null;
   position: number;
   assigned_to: string | null;
+  observacao: string | null;
   entered_stage_at: Date;
   closed_at: Date | null;
   created_at: Date;
@@ -30,6 +32,7 @@ export class CrmCard implements ICrmCard {
     this.priority = props.priority;
     this.position = props.position;
     this.assigned_to = props.assigned_to;
+    this.observacao = props.observacao;
     this.entered_stage_at = new Date(props.entered_stage_at);
     this.closed_at = props.closed_at ? new Date(props.closed_at) : null;
     this.created_at = new Date(props.created_at);
@@ -48,6 +51,7 @@ export class CrmCard implements ICrmCard {
       priority: this.priority,
       position: this.position,
       assigned_to: this.assigned_to,
+      observacao: this.observacao,
       entered_stage_at: this.entered_stage_at,
       closed_at: this.closed_at,
       created_at: this.created_at,
