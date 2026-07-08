@@ -32,18 +32,24 @@ export class LeadRepository implements ILeadRepository {
     return LeadEntity.fromDatabase(data as ILead);
   }
 
-  async findAll(limit: number = 10, offset: number = 0): Promise<{ data: Lead[]; total: number }> {
-    const { count, error: countError } = await this.supabase
-      .from('leads')
-      .select('*', { count: 'exact', head: true });
+  async findAll(limit: number = 10, offset: number = 0, utm_source?: string): Promise<{ data: Lead[]; total: number }> {
+    let query = this.supabase.from('leads').select('*', { count: 'exact', head: true });
+    if (utm_source) {
+      query = query.eq('utm_source', utm_source);
+    }
+    const { count, error: countError } = await query;
 
     if (countError) throw new Error(`Failed to count leads: ${countError.message}`);
 
-    const { data, error } = await this.supabase
+    let dataQuery = this.supabase
       .from('leads')
       .select()
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
+    if (utm_source) {
+      dataQuery = dataQuery.eq('utm_source', utm_source);
+    }
+    const { data, error } = await dataQuery;
 
     if (error) throw new Error(`Failed to list leads: ${error.message}`);
 

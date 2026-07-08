@@ -401,3 +401,28 @@ $$;
 -- GRANT EXECUTE nas stored functions
 -- -------------------------------------------------------------------------
 grant execute on function public.create_card, public.move_card, public.reorder_cards, public.get_board, public.get_leads_not_in_crm, public.update_card, public.delete_card, public.get_card, public.get_card_history to anon, authenticated;
+
+-- -------------------------------------------------------------------------
+-- 1.10 auto_add_to_crm() - trigger para adicionar lead ao CRM automaticamente
+-- -------------------------------------------------------------------------
+create or replace function public.auto_add_to_crm()
+returns trigger as $$
+declare
+  v_stage_id uuid;
+begin
+  if new.utm_source is distinct from 'manual' then
+    select id into v_stage_id from public.crm_stages where slug = 'qualificar';
+    if v_stage_id is not null then
+      insert into public.crm_cards (lead_id, stage_id, priority, position)
+      values (new.id, v_stage_id, null, (select coalesce(max(position), 0) + 100 from public.crm_cards where stage_id = v_stage_id));
+    end if;
+  end if;
+  return new;
+end;
+$$ language plpgsql security definer set search_path = public, pg_temp;
+
+drop trigger if exists trg_leads_auto_add_to_crm on public.leads;
+create trigger trg_leads_auto_add_to_crm
+after insert on public.leads
+for each row execute function public.auto_add_to_crm();
+
