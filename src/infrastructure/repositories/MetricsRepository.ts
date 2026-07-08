@@ -38,43 +38,45 @@ export class MetricsRepository implements IMetricsRepository {
     const endDate = end.toISOString().slice(0, 10);
 
     const { data, error } = await this.supabase
-      .from('lead_control_mensal')
+      .from('leads')
       .select(`
-        lead_id,
-        faturamento,
-        cpl,
-        mql,
-        cpr,
-        pct_conversao,
-        investimento,
-        roas,
-        lead:leads (
-          id,
-          name,
-          instagram,
-          created_at
+        id,
+        name,
+        instagram,
+        created_at,
+        control:lead_control_mensal (
+          faturamento,
+          cpl,
+          mql,
+          cpr,
+          pct_conversao,
+          investimento,
+          roas
         )
       `)
-      .gte('lead.created_at', startDate)
-      .lt('lead.created_at', endDate)
-      .order('lead.created_at', { ascending: false });
+      .gte('created_at', startDate)
+      .lt('created_at', endDate)
+      .order('created_at', { ascending: false });
 
     if (error) throw new Error(`Failed to list lead control mensal: ${error.message}`);
     if (!data) return [];
 
-    return (data as any[]).map((item) => ({
-      lead_id: item.lead_id,
-      lead_name: item.lead?.name ?? '',
-      lead_instagram: item.lead?.instagram ?? null,
-      lead_created_at: item.lead?.created_at ?? '',
-      faturamento: item.faturamento,
-      cpl: item.cpl,
-      mql: item.mql,
-      cpr: item.cpr,
-      pct_conversao: item.pct_conversao,
-      investimento: item.investimento,
-      roas: item.roas,
-    }));
+    return (data as any[]).map((item) => {
+      const control = item.control?.[0] ?? {};
+      return {
+        lead_id: item.id,
+        lead_name: item.name ?? '',
+        lead_instagram: item.instagram ?? null,
+        lead_created_at: item.created_at ?? '',
+        faturamento: control.faturamento ?? null,
+        cpl: control.cpl ?? null,
+        mql: control.mql ?? null,
+        cpr: control.cpr ?? null,
+        pct_conversao: control.pct_conversao ?? null,
+        investimento: control.investimento ?? null,
+        roas: control.roas ?? null,
+      };
+    });
   }
 
   async updateLeadControlMensal(leadId: string, data: UpdateLeadControlMensalInput): Promise<LeadControlMensalDTO | null> {
@@ -82,22 +84,7 @@ export class MetricsRepository implements IMetricsRepository {
       .from('lead_control_mensal')
       .update(data)
       .eq('lead_id', leadId)
-      .select(`
-        lead_id,
-        faturamento,
-        cpl,
-        mql,
-        cpr,
-        pct_conversao,
-        investimento,
-        roas,
-        lead:leads (
-          id,
-          name,
-          instagram,
-          created_at
-        )
-      `)
+      .select('lead_id, faturamento, cpl, mql, cpr, pct_conversao, investimento, roas')
       .single();
 
     if (error) {
@@ -106,12 +93,21 @@ export class MetricsRepository implements IMetricsRepository {
     }
     if (!updated) return null;
 
+    const { data: lead, error: leadError } = await this.supabase
+      .from('leads')
+      .select('id, name, instagram, created_at')
+      .eq('id', leadId)
+      .single();
+
+    if (leadError || !lead) return null;
+
     const item = updated as any;
+    const l = lead as any;
     return {
       lead_id: item.lead_id,
-      lead_name: item.lead?.name ?? '',
-      lead_instagram: item.lead?.instagram ?? null,
-      lead_created_at: item.lead?.created_at ?? '',
+      lead_name: l.name ?? '',
+      lead_instagram: l.instagram ?? null,
+      lead_created_at: l.created_at ?? '',
       faturamento: item.faturamento,
       cpl: item.cpl,
       mql: item.mql,
