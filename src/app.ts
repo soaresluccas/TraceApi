@@ -3,10 +3,10 @@ import cors from 'cors';
 import swaggerUi from 'swagger-ui-express';
 import swaggerSpec from './docs/swagger';
 import { initSupabase } from './infrastructure/config';
-import { LeadRepository, UserRepository, CrmRepository } from './infrastructure/repositories';
+import { LeadRepository, UserRepository, CrmRepository, MetricsRepository } from './infrastructure/repositories';
 import { BrevoLeadNotificationService } from './infrastructure/services';
-import { LeadController, AuthController, CrmController } from './presentation/controllers';
-import { createLeadRoutes, createPublicLeadRoutes, createAuthRoutes, createCrmRoutes } from './presentation/routes';
+import { LeadController, AuthController, CrmController, MetricsController } from './presentation/controllers';
+import { createLeadRoutes, createPublicLeadRoutes, createAuthRoutes, createCrmRoutes, createMetricsRoutes } from './presentation/routes';
 import { authMiddleware } from './presentation/middleware/authMiddleware';
 
 const app: Express = express();
@@ -54,20 +54,24 @@ app.get('/', (_req: Request, res: Response) => {
 const supabase = initSupabase();
 const leadRepository = new LeadRepository(supabase);
 const crmRepository = new CrmRepository(supabase);
+const metricsRepository = new MetricsRepository(supabase);
 const userRepository = new UserRepository();
 const leadNotificationService = new BrevoLeadNotificationService();
 const leadController = new LeadController(leadRepository, leadNotificationService);
 const authController = new AuthController(userRepository);
 const crmController = new CrmController(crmRepository);
+const metricsController = new MetricsController(metricsRepository);
 const publicLeadRoutes = createPublicLeadRoutes(leadController);
 const leadRoutes = createLeadRoutes(leadController);
 const authRoutes = createAuthRoutes(authController);
 const crmRoutes = createCrmRoutes(crmController);
+const metricsRoutes = createMetricsRoutes(metricsController);
 
 app.use('/api/auth', authRoutes);
 app.use('/api/leads', publicLeadRoutes);
 app.use('/api/leads', authMiddleware, leadRoutes);
 app.use('/api/crm', authMiddleware, crmRoutes);
+app.use('/api/metrics', authMiddleware, metricsRoutes);
 
 app.use((_req: Request, res: Response) => {
   res.status(404).json({
