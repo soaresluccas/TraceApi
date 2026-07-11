@@ -159,8 +159,9 @@ export class LeadController {
     try {
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
       const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
+      const month = req.query.month as string | undefined;
 
-      const result = await this.listLeadsControlUseCase.execute({ limit, offset });
+      const result = await this.listLeadsControlUseCase.execute({ limit, offset, month });
 
       res.json({
         success: true,

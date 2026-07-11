@@ -59,18 +59,31 @@ export class LeadRepository implements ILeadRepository {
     return { data: leads, total };
   }
 
-  async findAllControl(limit: number = 10, offset: number = 0): Promise<{ data: LeadControlDTO[]; total: number }> {
-    const { count, error: countError } = await this.supabase
+  async findAllControl(limit: number = 10, offset: number = 0, month?: string): Promise<{ data: LeadControlDTO[]; total: number }> {
+    let countQuery = this.supabase
       .from('leads')
       .select('*', { count: 'exact', head: true });
 
-    if (countError) throw new Error(`Failed to count leads: ${countError.message}`);
-
-    const { data, error } = await this.supabase
+    let dataQuery = this.supabase
       .from('leads')
       .select('id, name, instagram, faturamento, curva_abc, respondeu, reuniao_agendada, reuniao_concluida, proposta_enviada, conversao, objecao')
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
+
+    if (month) {
+      const startDate = `${month}-01`;
+      const end = new Date(startDate);
+      end.setMonth(end.getMonth() + 1);
+      const endDate = end.toISOString().slice(0, 10);
+      countQuery = countQuery.gte('created_at', startDate).lt('created_at', endDate);
+      dataQuery = dataQuery.gte('created_at', startDate).lt('created_at', endDate);
+    }
+
+    const { count, error: countError } = await countQuery;
+
+    if (countError) throw new Error(`Failed to count leads: ${countError.message}`);
+
+    const { data, error } = await dataQuery;
 
     if (error) throw new Error(`Failed to list leads control: ${error.message}`);
 

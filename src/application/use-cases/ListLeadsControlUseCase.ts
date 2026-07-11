@@ -4,6 +4,7 @@ import type { ILeadRepository } from '../../domain/interfaces/index';
 export interface ListLeadsControlInput {
   limit?: number;
   offset?: number;
+  month?: string;
 }
 
 export interface ListLeadsControlOutput {
@@ -20,7 +21,7 @@ export class ListLeadsControlUseCase {
     const limit = input.limit || 10;
     const offset = input.offset || 0;
 
-    const { data, total } = await this.leadRepository.findAllControl(limit, offset);
+    const { data, total } = await this.leadRepository.findAllControl(limit, offset, input.month);
 
     return {
       data,

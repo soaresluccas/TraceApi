@@ -48,17 +48,25 @@ export class MetricsController {
       const { month } = req.params;
       const data = await this.getMonthlyControlUseCase.execute(month);
 
-      if (!data) {
-        res.status(404).json({
-          success: false,
-          message: 'Nenhum controle mensal encontrado para o mês informado',
-        });
-        return;
-      }
-
       res.json({
         success: true,
-        data,
+        data: data ?? {
+          id: null,
+          mes: month,
+          cpl: null,
+          mql: null,
+          cpr: null,
+          pct_conversao: null,
+          roas: null,
+          total_faturamento: null,
+          total_investimento: null,
+          total_leads: null,
+          qualificados: null,
+          reunioes_realizadas: null,
+          vendas: null,
+          created_at: null,
+          updated_at: null,
+        },
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Erro ao buscar controle mensal';
