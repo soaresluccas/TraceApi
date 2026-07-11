@@ -1,0 +1,4 @@
+-- =========================================================================
+-- MIGRATION: (vazia - colunas foram migradas para leads.faturamento e
+-- lead_control_mensal redesenhada na migration 20260704090000)
+-- =========================================================================

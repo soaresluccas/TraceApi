@@ -1,9 +1,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type {
   IMetricsRepository,
-  LeadControlMensalDTO,
+  MonthlyControlDTO,
   MonthlyMetricsDTO,
-  UpdateLeadControlMensalInput,
+  MonthlyMetricsCalculationResult,
+  InvestimentoMensalDTO,
+  UpsertInvestimentoMensalInput,
 } from '../../domain/interfaces/index';
 
 export class MetricsRepository implements IMetricsRepository {
@@ -31,90 +33,54 @@ export class MetricsRepository implements IMetricsRepository {
     return data as MonthlyMetricsDTO;
   }
 
-  async listLeadControlMensal(month: string): Promise<LeadControlMensalDTO[]> {
-    const startDate = `${month}-01`;
-    const end = new Date(startDate);
-    end.setMonth(end.getMonth() + 1);
-    const endDate = end.toISOString().slice(0, 10);
-
+  async getMonthlyControl(month: string): Promise<MonthlyControlDTO | null> {
     const { data, error } = await this.supabase
-      .from('leads')
-      .select(`
-        id,
-        name,
-        instagram,
-        created_at,
-        control:lead_control_mensal (
-          faturamento,
-          cpl,
-          mql,
-          cpr,
-          pct_conversao,
-          investimento,
-          roas
-        )
-      `)
-      .gte('created_at', startDate)
-      .lt('created_at', endDate)
-      .order('created_at', { ascending: false });
+      .from('lead_control_mensal')
+      .select('*')
+      .eq('mes', month)
+      .maybeSingle();
 
-    if (error) throw new Error(`Failed to list lead control mensal: ${error.message}`);
-    if (!data) return [];
+    if (error) throw new Error(`Failed to get monthly control: ${error.message}`);
+    if (!data) return null;
 
-    return (data as any[]).map((item) => {
-      const control = item.control?.[0] ?? {};
-      return {
-        lead_id: item.id,
-        lead_name: item.name ?? '',
-        lead_instagram: item.instagram ?? null,
-        lead_created_at: item.created_at ?? '',
-        faturamento: control.faturamento ?? null,
-        cpl: control.cpl ?? null,
-        mql: control.mql ?? null,
-        cpr: control.cpr ?? null,
-        pct_conversao: control.pct_conversao ?? null,
-        investimento: control.investimento ?? null,
-        roas: control.roas ?? null,
-      };
-    });
+    return data as MonthlyControlDTO;
   }
 
-  async updateLeadControlMensal(leadId: string, data: UpdateLeadControlMensalInput): Promise<LeadControlMensalDTO | null> {
-    const { data: updated, error } = await this.supabase
-      .from('lead_control_mensal')
-      .update(data)
-      .eq('lead_id', leadId)
-      .select('lead_id, faturamento, cpl, mql, cpr, pct_conversao, investimento, roas')
+  async recalculateMonthlyMetrics(month: string): Promise<MonthlyMetricsCalculationResult | null> {
+    const { data, error } = await this.supabase
+      .rpc('recalculate_monthly_metrics', { p_month: month });
+
+    if (error) throw new Error(`Failed to recalculate monthly metrics: ${error.message}`);
+    if (!data || data.length === 0) return null;
+
+    return data[0] as MonthlyMetricsCalculationResult;
+  }
+
+  async getInvestimentoMensal(month: string): Promise<InvestimentoMensalDTO | null> {
+    const { data, error } = await this.supabase
+      .from('investimento_mensal')
+      .select('*')
+      .eq('mes', month)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) throw new Error(`Failed to get investimento mensal: ${error.message}`);
+    if (!data) return null;
+
+    return data as InvestimentoMensalDTO;
+  }
+
+  async upsertInvestimentoMensal(input: UpsertInvestimentoMensalInput): Promise<InvestimentoMensalDTO | null> {
+    const { data, error } = await this.supabase
+      .from('investimento_mensal')
+      .insert({ mes: input.mes, valor: input.valor })
+      .select('*')
       .single();
 
-    if (error) {
-      if (error.code === 'PGRST116') return null;
-      throw new Error(`Failed to update lead control mensal: ${error.message}`);
-    }
-    if (!updated) return null;
+    if (error) throw new Error(`Failed to upsert investimento mensal: ${error.message}`);
+    if (!data) return null;
 
-    const { data: lead, error: leadError } = await this.supabase
-      .from('leads')
-      .select('id, name, instagram, created_at')
-      .eq('id', leadId)
-      .single();
-
-    if (leadError || !lead) return null;
-
-    const item = updated as any;
-    const l = lead as any;
-    return {
-      lead_id: item.lead_id,
-      lead_name: l.name ?? '',
-      lead_instagram: l.instagram ?? null,
-      lead_created_at: l.created_at ?? '',
-      faturamento: item.faturamento,
-      cpl: item.cpl,
-      mql: item.mql,
-      cpr: item.cpr,
-      pct_conversao: item.pct_conversao,
-      investimento: item.investimento,
-      roas: item.roas,
-    };
+    return data as InvestimentoMensalDTO;
   }
 }

@@ -6,7 +6,7 @@ export { ListLeadsNotInCrmUseCase, type ListLeadsNotInCrmInput, type ListLeadsNo
 export { UpdateLeadUseCase, type UpdateLeadInput } from './UpdateLeadUseCase';
 export { UpdateLeadControlUseCase, type UpdateLeadControlInput } from './UpdateLeadControlUseCase';
 export { DeleteLeadUseCase } from './DeleteLeadUseCase';
-export { GetMonthlyMetricsUseCase, ListLeadControlMensalUseCase, UpdateLeadControlMensalUseCase } from './MetricsUseCases';
+export { GetMonthlyMetricsUseCase, GetMonthlyControlUseCase, RecalculateMonthlyMetricsUseCase, UpsertInvestimentoMensalUseCase, GetInvestimentoMensalUseCase } from './MetricsUseCases';
 export { RegisterUseCase, type RegisterInput, type RegisterOutput } from './RegisterUseCase';
 export { LoginUseCase, type LoginInput, type LoginOutput } from './LoginUseCase';
 export * from './crm';

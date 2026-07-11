@@ -1,16 +1,20 @@
 import type { Request, Response } from 'express';
 import type { IMetricsRepository } from '../../domain/interfaces/index';
-import { GetMonthlyMetricsUseCase, ListLeadControlMensalUseCase, UpdateLeadControlMensalUseCase } from '../../application/index';
+import { GetMonthlyMetricsUseCase, GetMonthlyControlUseCase, RecalculateMonthlyMetricsUseCase, UpsertInvestimentoMensalUseCase, GetInvestimentoMensalUseCase } from '../../application/index';
 
 export class MetricsController {
   private getMonthlyMetricsUseCase: GetMonthlyMetricsUseCase;
-  private listLeadControlMensalUseCase: ListLeadControlMensalUseCase;
-  private updateLeadControlMensalUseCase: UpdateLeadControlMensalUseCase;
+  private getMonthlyControlUseCase: GetMonthlyControlUseCase;
+  private recalculateMonthlyMetricsUseCase: RecalculateMonthlyMetricsUseCase;
+  private upsertInvestimentoMensalUseCase: UpsertInvestimentoMensalUseCase;
+  private getInvestimentoMensalUseCase: GetInvestimentoMensalUseCase;
 
   constructor(metricsRepository: IMetricsRepository) {
     this.getMonthlyMetricsUseCase = new GetMonthlyMetricsUseCase(metricsRepository);
-    this.listLeadControlMensalUseCase = new ListLeadControlMensalUseCase(metricsRepository);
-    this.updateLeadControlMensalUseCase = new UpdateLeadControlMensalUseCase(metricsRepository);
+    this.getMonthlyControlUseCase = new GetMonthlyControlUseCase(metricsRepository);
+    this.recalculateMonthlyMetricsUseCase = new RecalculateMonthlyMetricsUseCase(metricsRepository);
+    this.upsertInvestimentoMensalUseCase = new UpsertInvestimentoMensalUseCase(metricsRepository);
+    this.getInvestimentoMensalUseCase = new GetInvestimentoMensalUseCase(metricsRepository);
   }
 
   async getMonthlyMetrics(req: Request, res: Response): Promise<void> {
@@ -39,17 +43,25 @@ export class MetricsController {
     }
   }
 
-  async listLeadControlMensal(req: Request, res: Response): Promise<void> {
+  async getMonthlyControl(req: Request, res: Response): Promise<void> {
     try {
-      const month = req.query.month as string;
-      const data = await this.listLeadControlMensalUseCase.execute(month);
+      const { month } = req.params;
+      const data = await this.getMonthlyControlUseCase.execute(month);
+
+      if (!data) {
+        res.status(404).json({
+          success: false,
+          message: 'Nenhum controle mensal encontrado para o mês informado',
+        });
+        return;
+      }
 
       res.json({
         success: true,
         data,
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Erro ao listar controle mensal de leads';
+      const message = error instanceof Error ? error.message : 'Erro ao buscar controle mensal';
       res.status(400).json({
         success: false,
         message,
@@ -57,26 +69,78 @@ export class MetricsController {
     }
   }
 
-  async updateLeadControlMensal(req: Request, res: Response): Promise<void> {
+  async recalculateMonthlyMetrics(req: Request, res: Response): Promise<void> {
     try {
-      const { leadId } = req.params;
-      const result = await this.updateLeadControlMensalUseCase.execute(leadId, req.body);
+      const { month } = req.params;
+      const result = await this.recalculateMonthlyMetricsUseCase.execute(month);
 
       if (!result) {
         res.status(404).json({
           success: false,
-          message: 'Lead não encontrado',
+          message: 'Nenhum lead encontrado para o mês informado',
         });
         return;
       }
 
       res.json({
         success: true,
-        message: 'Controle mensal atualizado com sucesso',
+        message: 'Métricas recalculadas com sucesso',
         data: result,
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Erro ao atualizar controle mensal';
+      const message = error instanceof Error ? error.message : 'Erro ao recalcular métricas mensais';
+      res.status(400).json({
+        success: false,
+        message,
+      });
+    }
+  }
+
+  async upsertInvestimentoMensal(req: Request, res: Response): Promise<void> {
+    try {
+      const result = await this.upsertInvestimentoMensalUseCase.execute(req.body);
+
+      if (!result) {
+        res.status(400).json({
+          success: false,
+          message: 'Falha ao salvar investimento mensal',
+        });
+        return;
+      }
+
+      res.json({
+        success: true,
+        message: 'Investimento mensal salvo com sucesso',
+        data: result,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro ao salvar investimento mensal';
+      res.status(400).json({
+        success: false,
+        message,
+      });
+    }
+  }
+
+  async getInvestimentoMensal(req: Request, res: Response): Promise<void> {
+    try {
+      const { month } = req.params;
+      const result = await this.getInvestimentoMensalUseCase.execute(month);
+
+      if (!result) {
+        res.status(404).json({
+          success: false,
+          message: 'Nenhum investimento encontrado para o mês informado',
+        });
+        return;
+      }
+
+      res.json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro ao buscar investimento mensal';
       res.status(400).json({
         success: false,
         message,

@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import type { IMetricsRepository, LeadControlMensalDTO, MonthlyMetricsDTO, UpdateLeadControlMensalInput } from '../../domain/interfaces/index';
+import type { IMetricsRepository, MonthlyMetricsDTO, MonthlyControlDTO, MonthlyMetricsCalculationResult, InvestimentoMensalDTO, UpsertInvestimentoMensalInput } from '../../domain/interfaces/index';
+import { parseBRCurrency } from '../../domain/utils/index';
 
 export class GetMonthlyMetricsUseCase {
   constructor(private readonly metricsRepository: IMetricsRepository) {}
@@ -12,35 +13,51 @@ export class GetMonthlyMetricsUseCase {
   }
 }
 
-export class ListLeadControlMensalUseCase {
+export class GetMonthlyControlUseCase {
   constructor(private readonly metricsRepository: IMetricsRepository) {}
 
-  async execute(month: string): Promise<LeadControlMensalDTO[]> {
+  async execute(month: string): Promise<MonthlyControlDTO | null> {
     if (!month || !/^\d{4}-\d{2}$/.test(month)) {
       throw new Error('month deve estar no formato YYYY-MM');
     }
-    return this.metricsRepository.listLeadControlMensal(month);
+    return this.metricsRepository.getMonthlyControl(month);
   }
 }
 
-const UpdateLeadControlMensalSchema = z.object({
-  faturamento: z.union([z.string(), z.null()]).optional(),
-  cpl: z.union([z.string(), z.null()]).optional(),
-  mql: z.union([z.string(), z.null()]).optional(),
-  cpr: z.union([z.string(), z.null()]).optional(),
-  pct_conversao: z.union([z.string(), z.null()]).optional(),
-  investimento: z.union([z.string(), z.null()]).optional(),
-  roas: z.union([z.string(), z.null()]).optional(),
-});
-
-export class UpdateLeadControlMensalUseCase {
+export class RecalculateMonthlyMetricsUseCase {
   constructor(private readonly metricsRepository: IMetricsRepository) {}
 
-  async execute(leadId: string, input: UpdateLeadControlMensalInput): Promise<LeadControlMensalDTO | null> {
-    if (!leadId) throw new Error('leadId é obrigatório');
-    const validated = UpdateLeadControlMensalSchema.parse(input);
-    const hasFields = Object.keys(validated).length > 0;
-    if (!hasFields) throw new Error('Nenhum campo fornecido');
-    return this.metricsRepository.updateLeadControlMensal(leadId, validated);
+  async execute(month: string): Promise<MonthlyMetricsCalculationResult | null> {
+    if (!month || !/^\d{4}-\d{2}$/.test(month)) {
+      throw new Error('month deve estar no formato YYYY-MM');
+    }
+    return this.metricsRepository.recalculateMonthlyMetrics(month);
+  }
+}
+
+const UpsertInvestimentoMensalSchema = z.object({
+  mes: z.string().regex(/^\d{4}-\d{2}$/),
+  valor: z.union([z.string(), z.number()]),
+});
+
+export class UpsertInvestimentoMensalUseCase {
+  constructor(private readonly metricsRepository: IMetricsRepository) {}
+
+  async execute(input: UpsertInvestimentoMensalInput): Promise<InvestimentoMensalDTO | null> {
+    const validated = UpsertInvestimentoMensalSchema.parse(input);
+    const valor = parseBRCurrency(validated.valor);
+    if (valor === null) throw new Error('valor inválido');
+    return this.metricsRepository.upsertInvestimentoMensal({ mes: validated.mes, valor });
+  }
+}
+
+export class GetInvestimentoMensalUseCase {
+  constructor(private readonly metricsRepository: IMetricsRepository) {}
+
+  async execute(month: string): Promise<InvestimentoMensalDTO | null> {
+    if (!month || !/^\d{4}-\d{2}$/.test(month)) {
+      throw new Error('month deve estar no formato YYYY-MM');
+    }
+    return this.metricsRepository.getInvestimentoMensal(month);
   }
 }

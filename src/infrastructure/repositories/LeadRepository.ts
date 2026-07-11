@@ -68,7 +68,7 @@ export class LeadRepository implements ILeadRepository {
 
     const { data, error } = await this.supabase
       .from('leads')
-      .select('id, name, instagram, curva_abc, respondeu, reuniao_agendada, reuniao_concluida, proposta_enviada, conversao, objecao')
+      .select('id, name, instagram, faturamento, curva_abc, respondeu, reuniao_agendada, reuniao_concluida, proposta_enviada, conversao, objecao')
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
@@ -116,7 +116,7 @@ export class LeadRepository implements ILeadRepository {
       .from('leads')
       .update(data)
       .eq('id', id)
-      .select('id, name, instagram, curva_abc, respondeu, reuniao_agendada, reuniao_concluida, proposta_enviada, conversao, objecao')
+      .select('id, name, instagram, faturamento, curva_abc, respondeu, reuniao_agendada, reuniao_concluida, proposta_enviada, conversao, objecao')
       .single();
 
     if (error) {
