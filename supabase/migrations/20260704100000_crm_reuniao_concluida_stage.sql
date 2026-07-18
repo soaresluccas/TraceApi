@@ -1,11 +1,49 @@
--- =========================================================================
--- MIGRATION: Função SQL para recalcular métricas mensais automáticas
--- =========================================================================
--- CPL, MQL, CPR, % Conversão e ROAS são calculados a partir dos dados
--- agregados do mês. Investimento vem de investimento_mensal (mais recente).
--- Faturamento vem de leads.faturamento (soma de todos os leads do mês).
--- Resultado é gravado (upsert) em lead_control_mensal (um row por mês).
--- =========================================================================
+update public.crm_stages
+  set position = position + 1
+  where position >= 5;
+
+insert into public.crm_stages (name, slug, position, color, is_closed)
+values ('Reunião Concluída', 'reuniao_concluida', 5, '#06b6d4', false)
+on conflict (slug) do update set
+  name = excluded.name,
+  position = excluded.position,
+  color = excluded.color,
+  is_closed = excluded.is_closed;
+
+drop view if exists public.vw_metricas_mensais;
+
+create or replace view public.vw_metricas_mensais as
+with meses as (
+  select distinct date_trunc('month', l.created_at) as mes
+  from public.leads l
+)
+select
+  m.mes::date as data,
+  (select count(*) from public.leads l where date_trunc('month', l.created_at) = m.mes) as leads,
+  (select count(*) from public.leads l where l.curva_abc in (0, 1) and date_trunc('month', l.created_at) = m.mes) as qualificados,
+  (select count(distinct h.card_id)
+     from public.crm_stage_history h
+     join public.crm_stages s on s.id = h.to_stage_id
+     where s.slug = 'em_contato' and date_trunc('month', h.changed_at) = m.mes) as conversas,
+  (select count(distinct h.card_id)
+     from public.crm_stage_history h
+     join public.crm_stages s on s.id = h.to_stage_id
+     where s.slug = 'reuniao_agendada' and date_trunc('month', h.changed_at) = m.mes) as reunioes_agendadas,
+  (select count(distinct h.card_id)
+     from public.crm_stage_history h
+     join public.crm_stages s on s.id = h.to_stage_id
+     where s.slug = 'reuniao_concluida' and date_trunc('month', h.changed_at) = m.mes) as reunioes_realizadas,
+  (select count(distinct h.card_id)
+     from public.crm_stage_history h
+     join public.crm_stages s on s.id = h.to_stage_id
+     where s.slug = 'proposta_enviada' and date_trunc('month', h.changed_at) = m.mes) as propostas_enviadas,
+  (select count(distinct h.card_id)
+     from public.crm_stage_history h
+     join public.crm_stages s on s.id = h.to_stage_id
+     where s.slug = 'ganho' and date_trunc('month', h.changed_at) = m.mes) as vendas
+from meses m;
+
+grant select on public.vw_metricas_mensais to anon, authenticated;
 
 create or replace function public.recalculate_monthly_metrics(p_month text)
 returns table(

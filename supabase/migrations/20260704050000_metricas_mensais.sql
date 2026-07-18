@@ -49,7 +49,7 @@ with meses as (
 select
   m.mes::date as data,
   (select count(*) from public.leads l where date_trunc('month', l.created_at) = m.mes) as leads,
-  null::integer as qualificados,
+  (select count(*) from public.leads l where l.curva_abc in (0, 1) and date_trunc('month', l.created_at) = m.mes) as qualificados,
   (select count(distinct h.card_id)
      from public.crm_stage_history h
      join public.crm_stages s on s.id = h.to_stage_id
@@ -58,7 +58,10 @@ select
      from public.crm_stage_history h
      join public.crm_stages s on s.id = h.to_stage_id
      where s.slug = 'reuniao_agendada' and date_trunc('month', h.changed_at) = m.mes) as reunioes_agendadas,
-  (select count(*) from public.leads l where l.reuniao_concluida = 1 and date_trunc('month', l.created_at) = m.mes) as reunioes_realizadas,
+  (select count(distinct h.card_id)
+     from public.crm_stage_history h
+     join public.crm_stages s on s.id = h.to_stage_id
+     where s.slug = 'reuniao_concluida' and date_trunc('month', h.changed_at) = m.mes) as reunioes_realizadas,
   (select count(distinct h.card_id)
      from public.crm_stage_history h
      join public.crm_stages s on s.id = h.to_stage_id

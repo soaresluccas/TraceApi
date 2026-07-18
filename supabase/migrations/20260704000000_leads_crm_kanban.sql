@@ -154,12 +154,13 @@ insert into public.crm_stages (name, slug, position, color, is_closed) values
   ('Em Contato',              'em_contato',            2, '#10b981', false),
   ('FW1 - Sem Resposta',      'fw1_sem_resposta',      3, '#eab308', false),
   ('Reunião Agendada',        'reuniao_agendada',      4, '#3b82f6', false),
-  ('FW2 - Não Compareceu',    'fw2_nao_compareceu',    5, '#f97316', false),
-  ('Proposta Enviada',        'proposta_enviada',      6, '#8b5cf6', false),
-  ('FW3 - Não Tomou Decisão', 'fw3_nao_tomou_decisao', 7, '#f59e0b', false),
-  ('Outro Momento',           'outro_momento',         8, '#ef4444', false),
-  ('Perdida',                 'perdida',               9, '#dc2626', true),
-  ('Ganho',                   'ganho',                10, '#22c55e', true)
+  ('Reunião Concluída',       'reuniao_concluida',     5, '#06b6d4', false),
+  ('FW2 - Não Compareceu',    'fw2_nao_compareceu',    6, '#f97316', false),
+  ('Proposta Enviada',        'proposta_enviada',      7, '#8b5cf6', false),
+  ('FW3 - Não Tomou Decisão', 'fw3_nao_tomou_decisao', 8, '#f59e0b', false),
+  ('Outro Momento',           'outro_momento',         9, '#ef4444', false),
+  ('Perdida',                 'perdida',              10, '#dc2626', true),
+  ('Ganho',                   'ganho',                11, '#22c55e', true)
 on conflict (slug) do nothing;
 
 -- 3.2) Cards do kanban (1 card ativo por lead, é o que aparece no board)
