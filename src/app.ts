@@ -6,7 +6,7 @@ import { initSupabase } from './infrastructure/config';
 import { LeadRepository, UserRepository, CrmRepository, MetricsRepository } from './infrastructure/repositories';
 import { BrevoLeadNotificationService } from './infrastructure/services';
 import { LeadController, AuthController, CrmController, MetricsController } from './presentation/controllers';
-import { createLeadRoutes, createPublicLeadRoutes, createAuthRoutes, createCrmRoutes, createMetricsRoutes } from './presentation/routes';
+import { createLeadRoutes, createPublicLeadRoutes, createAuthRoutes, createCrmRoutes, createMetricsRoutes, createKeepAliveRoutes } from './presentation/routes';
 import { authMiddleware } from './presentation/middleware/authMiddleware';
 
 const app: Express = express();
@@ -66,12 +66,14 @@ const leadRoutes = createLeadRoutes(leadController);
 const authRoutes = createAuthRoutes(authController);
 const crmRoutes = createCrmRoutes(crmController);
 const metricsRoutes = createMetricsRoutes(metricsController);
+const keepAliveRoutes = createKeepAliveRoutes();
 
 app.use('/api/auth', authRoutes);
 app.use('/api/leads', publicLeadRoutes);
 app.use('/api/leads', authMiddleware, leadRoutes);
 app.use('/api/crm', authMiddleware, crmRoutes);
 app.use('/api/metrics', authMiddleware, metricsRoutes);
+app.use(keepAliveRoutes);
 
 app.use((_req: Request, res: Response) => {
   res.status(404).json({

@@ -1,7 +1,34 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Lead, ILead } from '../../domain/entities/index';
-import type { ILeadRepository, LeadControlDTO, LeadNotInCrmDTO } from '../../domain/interfaces/index';
+import type { ILeadRepository, LeadControlDTO, LeadNotInCrmDTO, LeadListFilters } from '../../domain/interfaces/index';
 import { Lead as LeadEntity } from '../../domain/entities/index';
+
+function monthRange(month: string): { start: string; end: string } {
+  const start = `${month}-01`;
+  const endDate = new Date(`${month}-01T00:00:00Z`);
+  endDate.setUTCMonth(endDate.getUTCMonth() + 1);
+  const end = endDate.toISOString().slice(0, 10);
+  return { start, end };
+}
+
+function applyFilters<T extends { eq: Function; gte: Function; lt: Function; or: Function }>(
+  query: T,
+  filters: LeadListFilters
+): T {
+  let next = query;
+  if (filters.utm_source) next = next.eq('utm_source', filters.utm_source);
+  if (filters.utm_medium) next = next.eq('utm_medium', filters.utm_medium);
+  if (filters.utm_campaign) next = next.eq('utm_campaign', filters.utm_campaign);
+  if (filters.search) {
+    const term = filters.search.replace(/[%_]/g, (c: string) => `\\${c}`);
+    next = next.or(`name.ilike.%${term}%,whatsapp.ilike.%${term}%`);
+  }
+  if (filters.month) {
+    const { start, end } = monthRange(filters.month);
+    next = next.gte('created_at', start).lt('created_at', end);
+  }
+  return next;
+}
 
 export class LeadRepository implements ILeadRepository {
   constructor(private readonly supabase: SupabaseClient) {}
@@ -32,25 +59,21 @@ export class LeadRepository implements ILeadRepository {
     return LeadEntity.fromDatabase(data as ILead);
   }
 
-  async findAll(limit: number = 10, offset: number = 0, utm_source?: string): Promise<{ data: Lead[]; total: number }> {
-    let query = this.supabase.from('leads').select('*', { count: 'exact', head: true });
-    if (utm_source) {
-      query = query.eq('utm_source', utm_source);
-    }
-    const { count, error: countError } = await query;
+  async findAll(limit: number = 10, offset: number = 0, filters: LeadListFilters = {}): Promise<{ data: Lead[]; total: number }> {
+    const baseCount = this.supabase.from('leads').select('*', { count: 'exact', head: true });
+    const countQuery = applyFilters(baseCount, filters);
 
-    if (countError) throw new Error(`Failed to count leads: ${countError.message}`);
-
-    let dataQuery = this.supabase
+    const baseData = this.supabase
       .from('leads')
       .select()
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
-    if (utm_source) {
-      dataQuery = dataQuery.eq('utm_source', utm_source);
-    }
-    const { data, error } = await dataQuery;
+    const dataQuery = applyFilters(baseData, filters);
 
+    const { count, error: countError } = await countQuery;
+    if (countError) throw new Error(`Failed to count leads: ${countError.message}`);
+
+    const { data, error } = await dataQuery;
     if (error) throw new Error(`Failed to list leads: ${error.message}`);
 
     const total = count ?? 0;

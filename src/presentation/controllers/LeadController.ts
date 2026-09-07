@@ -79,9 +79,15 @@ export class LeadController {
     try {
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
       const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
-      const utm_source = req.query.utm_source as string | undefined;
+      const filters = {
+        ...(req.query.utm_source ? { utm_source: String(req.query.utm_source) } : {}),
+        ...(req.query.utm_medium ? { utm_medium: String(req.query.utm_medium) } : {}),
+        ...(req.query.utm_campaign ? { utm_campaign: String(req.query.utm_campaign) } : {}),
+        ...(req.query.search ? { search: String(req.query.search) } : {}),
+        ...(req.query.month ? { month: String(req.query.month) } : {}),
+      };
 
-      const result = await this.listLeadsUseCase.execute({ limit, offset, utm_source });
+      const result = await this.listLeadsUseCase.execute({ limit, offset, filters });
 
       res.json({
         success: true,
@@ -186,8 +192,15 @@ export class LeadController {
     try {
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
       const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
+      const filters = {
+        ...(req.query.utm_source ? { utm_source: String(req.query.utm_source) } : {}),
+        ...(req.query.utm_medium ? { utm_medium: String(req.query.utm_medium) } : {}),
+        ...(req.query.utm_campaign ? { utm_campaign: String(req.query.utm_campaign) } : {}),
+        ...(req.query.search ? { search: String(req.query.search) } : {}),
+        ...(req.query.month ? { month: String(req.query.month) } : {}),
+      };
 
-      const result = await this.listLeadsUseCase.execute({ limit, offset });
+      const result = await this.listLeadsUseCase.execute({ limit, offset, filters });
 
       res.json({
         success: true,

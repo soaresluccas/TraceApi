@@ -1,9 +1,17 @@
 import type { Lead, ILead } from '../entities/index';
 
+export interface LeadListFilters {
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+  search?: string;
+  month?: string;
+}
+
 export interface ILeadRepository {
   create(lead: Lead): Promise<Lead>;
   findById(id: string): Promise<Lead | null>;
-  findAll(limit?: number, offset?: number, utm_source?: string): Promise<{ data: Lead[]; total: number }>;
+  findAll(limit?: number, offset?: number, filters?: LeadListFilters): Promise<{ data: Lead[]; total: number }>;
   findAllControl(limit?: number, offset?: number, month?: string): Promise<{ data: LeadControlDTO[]; total: number }>;
   findAllNotInCrm(search?: string, limit?: number, offset?: number): Promise<{ data: LeadNotInCrmDTO[]; total: number }>;
   update(id: string, lead: Partial<ILead>): Promise<Lead | null>;
